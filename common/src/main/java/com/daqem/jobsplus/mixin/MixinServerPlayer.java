@@ -233,7 +233,12 @@ public abstract class MixinServerPlayer extends Player implements JobsServerPlay
             ExpCollector expCollector = job.getExpCollector();
             double exp = expCollector.getExp();
             if (exp > 0) {
-                if (JobsPlusConfig.showXPInActionBar.get()) {
+                // Only show XP in action bar if enabled AND payment system is not active
+                // When payment commands or internal coins are active, those messages take priority
+                boolean paymentSystemActive = JobsPlusConfig.useActionPaymentCommand.get()
+                    || JobsPlusConfig.actionCoinMultiplier.get() > 0;
+
+                if (JobsPlusConfig.showXPInActionBar.get() && !paymentSystemActive) {
                     JobInstance jobInstance = job.getJobInstance();
                     MutableComponent component = JobsPlus.translatable("job.exp.gain", JobsPlus.formatNumber(exp), jobInstance.getName().getString()).withStyle(Style.EMPTY.withColor(TextColor.fromRgb(jobInstance.getColorDecimal()))).withStyle(ChatFormatting.BOLD);
                     jobsplus$getServerPlayer().sendSystemMessage(component, true);

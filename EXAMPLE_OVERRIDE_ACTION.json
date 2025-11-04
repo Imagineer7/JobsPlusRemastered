@@ -1,0 +1,31 @@
+{
+  "holder": {
+    "type": "jobsplus:job",
+    "id": "jobsplus:miner"
+  },
+  "type": "arc:on_break_block",
+  "rewards": [
+    {
+      "type": "jobsplus:job_exp",
+      "min": 15,
+      "max": 25,
+      "payment_min": 75,
+      "payment_max": 125
+    }
+  ],
+  "conditions": [
+    {
+      "type": "arc:blocks",
+      "blocks": [
+        "minecraft:diamond_ore",
+        "minecraft:deepslate_diamond_ore",
+        "minecraft:emerald_ore",
+        "minecraft:deepslate_emerald_ore"
+      ]
+    },
+    {
+      "type": "arc:not_in_block_pos_cache"
+    }
+  ]
+}
+

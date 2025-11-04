@@ -7,6 +7,7 @@ import com.daqem.jobsplus.networking.JobsPlusNetworking;
 import com.daqem.jobsplus.networking.s2c.ClientboundJobStatsPacket;
 import com.daqem.jobsplus.networking.s2c.ClientboundOpenJobsScreenPacket;
 import com.daqem.jobsplus.player.JobsServerPlayer;
+import com.daqem.jobsplus.player.job.Job;
 import com.daqem.jobsplus.player.job.JobLimitationManager;
 import dev.architectury.networking.NetworkManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -18,36 +19,36 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.stream.Stream;
 
-public class ServerboundStartJobPacket implements CustomPacketPayload {
+public class ServerboundLeaveJobPacket implements CustomPacketPayload {
 
     private final ResourceLocation jobLocation;
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, ServerboundStartJobPacket> STREAM_CODEC = new StreamCodec<>() {
+    public static final StreamCodec<RegistryFriendlyByteBuf, ServerboundLeaveJobPacket> STREAM_CODEC = new StreamCodec<>() {
         @Override
-        public @NotNull ServerboundStartJobPacket decode(RegistryFriendlyByteBuf buf) {
-            return new ServerboundStartJobPacket(buf);
+        public @NotNull ServerboundLeaveJobPacket decode(RegistryFriendlyByteBuf buf) {
+            return new ServerboundLeaveJobPacket(buf);
         }
 
         @Override
-        public void encode(RegistryFriendlyByteBuf buf, ServerboundStartJobPacket packet) {
+        public void encode(RegistryFriendlyByteBuf buf, ServerboundLeaveJobPacket packet) {
             buf.writeResourceLocation(packet.jobLocation);
         }
     };
 
-    public ServerboundStartJobPacket(ResourceLocation jobLocation) {
+    public ServerboundLeaveJobPacket(ResourceLocation jobLocation) {
         this.jobLocation = jobLocation;
     }
 
-    public ServerboundStartJobPacket(RegistryFriendlyByteBuf friendlyByteBuf) {
+    public ServerboundLeaveJobPacket(RegistryFriendlyByteBuf friendlyByteBuf) {
         this.jobLocation = friendlyByteBuf.readResourceLocation();
     }
 
     @Override
     public @NotNull Type<? extends CustomPacketPayload> type() {
-        return JobsPlusNetworking.SERVERBOUND_START_JOB;
+        return JobsPlusNetworking.SERVERBOUND_LEAVE_JOB;
     }
 
-    public static void handleServerSide(ServerboundStartJobPacket packet, NetworkManager.PacketContext context) {
+    public static void handleServerSide(ServerboundLeaveJobPacket packet, NetworkManager.PacketContext context) {
         if (context.getPlayer() instanceof JobsServerPlayer serverPlayer) {
             JobInstance jobInstance = JobInstance.of(packet.jobLocation);
 
@@ -56,29 +57,36 @@ public class ServerboundStartJobPacket implements CustomPacketPayload {
                 return;
             }
 
-            // Check job limitations
-            if (!JobLimitationManager.getInstance().canPlayerJoinJob(jobInstance, context.getPlayer().getServer())) {
-                int currentCount = JobLimitationManager.getInstance().getCurrentJobPlayerCount(jobInstance, context.getPlayer().getServer());
-                int maxCount = JobLimitationManager.getInstance().getJobPlayerLimit(jobInstance);
-                context.getPlayer().sendSystemMessage(JobsPlus.translatable("error.job_full",
-                    jobInstance.getName().getString(), currentCount, maxCount));
+            Job job = serverPlayer.jobsplus$getJob(jobInstance);
+            if (job == null) {
+                context.getPlayer().sendSystemMessage(JobsPlus.translatable("error.job.not_performing"));
                 return;
             }
 
-            if (serverPlayer.jobsplus$getJobs().size() >= JobsPlusConfig.maxJobs.get()) {
-                context.getPlayer().sendSystemMessage(JobsPlus.translatable("error.max_jobs_reached"));
+            int maxLevelToLeave = JobsPlusConfig.maxLevelToLeaveJob.get();
+            if (maxLevelToLeave == 0) {
+                context.getPlayer().sendSystemMessage(JobsPlus.translatable("error.job.leaving_disabled"));
                 return;
             }
 
-            if (serverPlayer.jobsplus$getJobs().size() >= JobsPlusConfig.amountOfFreeJobs.get()) {
-                if (serverPlayer.jobsplus$getCoins() < jobInstance.getPrice()) {
-                    context.getPlayer().sendSystemMessage(JobsPlus.translatable("error.not_enough_coins"));
-                    return;
-                }
-                serverPlayer.jobsplus$setCoins(serverPlayer.jobsplus$getCoins() - jobInstance.getPrice());
+            if (job.getLevel() > maxLevelToLeave) {
+                context.getPlayer().sendSystemMessage(JobsPlus.translatable("error.job.level_too_high", maxLevelToLeave));
+                return;
             }
 
-            serverPlayer.jobsplus$addNewJob(jobInstance);
+            if (JobsPlusConfig.resetStatsOnLeaveJob.get()) {
+                // Reset stats by removing the job completely
+                serverPlayer.jobsplus$removeJob(jobInstance);
+                context.getPlayer().sendSystemMessage(JobsPlus.translatable("message.job.left_with_reset", jobInstance.getName()));
+            } else {
+                // Keep stats but mark as inactive by setting level to 0
+                job.setLevel(0);
+                job.setExperience(0, false);
+                serverPlayer.jobsplus$removeActionHolders(job);
+                serverPlayer.jobsplus$removeJobOnClient(job);
+                context.getPlayer().sendSystemMessage(JobsPlus.translatable("message.job.left_without_reset", jobInstance.getName()));
+            }
+
             NetworkManager.sendToPlayer((ServerPlayer) serverPlayer, new ClientboundOpenJobsScreenPacket(
                     Stream.concat(serverPlayer.jobsplus$getJobs().stream(), serverPlayer.jobsplus$getInactiveJobs().stream()).toList(),
                     serverPlayer.jobsplus$getCoins()
@@ -98,3 +106,4 @@ public class ServerboundStartJobPacket implements CustomPacketPayload {
         }
     }
 }
+

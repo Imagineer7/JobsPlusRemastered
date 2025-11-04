@@ -39,6 +39,7 @@ public class JobsComponent extends AbstractComponent<JobsComponent> {
 
     private final JobsScreenOptions options;
     private final TextComponent coinsComponent;
+    private final TextComponent jobSlotsComponent;
     private final JobInfoComponent jobInfoComponent;
     private final JobItemRestrictionsComponent jobItemRestrictionsComponent;
     private final JobPowerupsComponent jobPowerupsComponent;
@@ -47,6 +48,8 @@ public class JobsComponent extends AbstractComponent<JobsComponent> {
     private final ModalComponent modalComponent;
     private Job cachedJob;
     private double cachedCoins;
+    private int cachedCurrentJobs;
+    private int cachedMaxJobs;
 
     public JobsComponent(Component title, JobsScreenOptions options, ModalComponent modalComponent) {
         super(null, 0, 0, WIDTH, HEIGHT);
@@ -54,16 +57,20 @@ public class JobsComponent extends AbstractComponent<JobsComponent> {
         this.modalComponent = modalComponent;
         this.cachedJob = options.getSelectedJob();
         this.cachedCoins = options.getCoins();
+        this.cachedCurrentJobs = options.getPreformingJobs().size();
+        this.cachedMaxJobs = JobsPlusConfig.maxJobs.get();
 
         center();
 
         Text titleText = new Text(font, title, 7, 6);
         Text coinsText = new Text(font, JobsPlus.translatable("gui.coins.top", JobsPlus.formatNumber(options.getCoins())), LEFT, 6);
+        Text jobSlotsText = new Text(font, JobsPlus.translatable("gui.jobs.slots", options.getPreformingJobs().size(), JobsPlusConfig.maxJobs.get()), LEFT, 16);
 
         JobsBackgroundComponent jobsBackgroundComponent = new JobsBackgroundComponent(WIDTH, HEIGHT, LEFT, RIGHT);
         TextComponent titleComponent = new TextComponent(titleText);
         JobsScrollComponent jobsScrollComponent = new JobsScrollComponent(7, 15, 116, 140, options);
         this.coinsComponent = new TextComponent(coinsText);
+        this.jobSlotsComponent = new TextComponent(jobSlotsText);
         TabGroupComponent leftTabsGroupComponent = new TabGroupComponent(
                 Stream.of(LeftTab.values())
                         .map(LeftTab::getOptions)
@@ -123,6 +130,7 @@ public class JobsComponent extends AbstractComponent<JobsComponent> {
 
         titleText.setTextColor(ChatFormatting.DARK_GRAY);
         coinsText.setTextColor(ChatFormatting.DARK_GRAY);
+        jobSlotsText.setTextColor(ChatFormatting.DARK_GRAY);
         jobInfoComponent.setVisible(options.getSelectedRightTab() == RightTab.INFO);
         jobItemRestrictionsComponent.setVisible(options.getSelectedRightTab() == RightTab.CRAFTING);
         jobPowerupsComponent.setVisible(options.getSelectedRightTab() == RightTab.POWER_UPS);
@@ -132,6 +140,7 @@ public class JobsComponent extends AbstractComponent<JobsComponent> {
         this.addChild(titleComponent);
         this.addChild(jobsScrollComponent);
         this.addChild(coinsComponent);
+        this.addChild(jobSlotsComponent);
         this.addChild(leftTabsGroupComponent);
         this.addChild(rightTabsGroupComponent);
         this.addChild(jobInfoComponent);
@@ -143,7 +152,8 @@ public class JobsComponent extends AbstractComponent<JobsComponent> {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        this.coinsComponent.setX(-this.coinsComponent.getWidth() - 7);
+        this.coinsComponent.setX(WIDTH - this.coinsComponent.getWidth() - 7);
+        this.jobSlotsComponent.setX(WIDTH - this.jobSlotsComponent.getWidth() - 7);
         jobInfoComponent.setVisible(options.getSelectedRightTab() == RightTab.INFO);
         jobItemRestrictionsComponent.setVisible(options.getSelectedRightTab() == RightTab.CRAFTING);
         jobPowerupsComponent.setVisible(options.getSelectedRightTab() == RightTab.POWER_UPS);
@@ -161,6 +171,19 @@ public class JobsComponent extends AbstractComponent<JobsComponent> {
                 coinsComponent.getText().setText(component);
                 coinsComponent.getText().setWidth(width);
                 coinsComponent.setWidth(width);
+            }
+        }
+        int currentJobs = options.getPreformingJobs().size();
+        int maxJobs = JobsPlusConfig.maxJobs.get();
+        if (cachedCurrentJobs != currentJobs || cachedMaxJobs != maxJobs) {
+            cachedCurrentJobs = currentJobs;
+            cachedMaxJobs = maxJobs;
+            if (jobSlotsComponent.getText() != null) {
+                Component component = JobsPlus.translatable("gui.jobs.slots", currentJobs, maxJobs);
+                int width = font.width(component);
+                jobSlotsComponent.getText().setText(component);
+                jobSlotsComponent.getText().setWidth(width);
+                jobSlotsComponent.setWidth(width);
             }
         }
         startJobButtonComponent.setVisible(options.getNotPreformingJobs().contains(options.getSelectedJob()) && JobsPlusConfig.maxJobs.get() > options.getPreformingJobs().size());

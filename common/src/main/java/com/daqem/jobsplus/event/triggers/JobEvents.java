@@ -50,7 +50,14 @@ public class JobEvents {
 
             triggerLevelUpEffects(serverPlayer);
 
-            player.jobsplus$addCoins(JobsPlusConfig.coinsPerLevelUp.get());
+            double coinsAwarded = JobsPlusConfig.coinsPerLevelUp.get();
+            player.jobsplus$addCoins(coinsAwarded);
+
+            // Execute custom commands if enabled
+            if (JobsPlusConfig.enableCommandRewards.get()) {
+                executeRewardCommands(serverPlayer, job, coinsAwarded);
+            }
+
             JobInstance jobInstance = job.getJobInstance();
             if (serverPlayer.getServer() == null) return;
             MutableComponent message = JobsPlus.translatable("job.level_up",
@@ -113,5 +120,42 @@ public class JobEvents {
 
     public static void playEXPOrbPickupSound(ServerPlayer player) {
         player.level().playSound(null, player.blockPosition(), SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.AMBIENT, 1F, 1F);
+    }
+
+    /**
+     * Executes custom reward commands configured in the config file.
+     * Supports placeholders: {player}, {job}, {level}, {coins}
+     */
+    private static void executeRewardCommands(ServerPlayer player, Job job, double coinsAwarded) {
+        if (player.getServer() == null) return;
+
+        java.util.List<String> commands = JobsPlusConfig.levelUpCommands.get();
+        if (commands == null || commands.isEmpty()) return;
+
+        String playerName = player.getGameProfile().getName();
+        String jobName = job.getJobInstance().getName().getString();
+        String level = String.valueOf(job.getLevel());
+        String coins = String.valueOf(coinsAwarded);
+
+        for (String command : commands) {
+            try {
+                // Replace placeholders
+                String processedCommand = command
+                        .replace("{player}", playerName)
+                        .replace("{job}", jobName)
+                        .replace("{level}", level)
+                        .replace("{coins}", coins);
+
+                // Execute command as server console
+                player.getServer().getCommands().performPrefixedCommand(
+                        player.getServer().createCommandSourceStack(),
+                        processedCommand
+                );
+
+                JobsPlus.debug("Executed reward command: {}", processedCommand);
+            } catch (Exception e) {
+                JobsPlus.LOGGER.error("Failed to execute reward command: {}", command, e);
+            }
+        }
     }
 }

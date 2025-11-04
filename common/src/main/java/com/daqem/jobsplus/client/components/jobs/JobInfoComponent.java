@@ -1,13 +1,19 @@
 package com.daqem.jobsplus.client.components.jobs;
 
 import com.daqem.jobsplus.JobsPlus;
+import com.daqem.jobsplus.client.components.JobsButtonComponent;
+import com.daqem.jobsplus.client.JobStatsClientCache;
 import com.daqem.jobsplus.client.options.JobsScreenOptions;
+import com.daqem.jobsplus.config.JobsPlusConfig;
+import com.daqem.jobsplus.networking.c2s.ServerboundLeaveJobPacket;
 import com.daqem.jobsplus.player.job.Job;
+import com.daqem.jobsplus.player.job.JobLimitationManager;
 import com.daqem.uilib.client.gui.component.AbstractComponent;
 import com.daqem.uilib.client.gui.component.SolidColorComponent;
 import com.daqem.uilib.client.gui.component.TextComponent;
 import com.daqem.uilib.client.gui.text.Text;
 import com.daqem.uilib.client.gui.text.multiline.MultiLineText;
+import dev.architectury.networking.NetworkManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -24,6 +30,8 @@ public class JobInfoComponent extends AbstractComponent<JobInfoComponent> {
     private final TextComponent experience;
     private final TextComponent description;
     private final TextComponent wantJob;
+    private final TextComponent playerCount;
+    private final JobsButtonComponent leaveJobButton;
 
     private Job cachedJob;
 
@@ -38,12 +46,24 @@ public class JobInfoComponent extends AbstractComponent<JobInfoComponent> {
         Text experienceText = new Text(font, getExperienceText(), 70, 18);
         MultiLineText descriptionText = new MultiLineText(font, getDescriptionText(), 8, 32, width - 16);
         Text wantJobText = new Text(font, getWantJobText(), 8, 18);
+        Text playerCountText = new Text(font, getPlayerCountText(), 8, height - 44);
 
         this.title = new TextComponent(titleText);
         this.level = new TextComponent(levelText);
         this.experience = new TextComponent(experienceText);
         this.description = new TextComponent(descriptionText);
         this.wantJob = new TextComponent(wantJobText);
+        this.playerCount = new TextComponent(playerCountText);
+
+        this.leaveJobButton = new JobsButtonComponent(
+                8, height - 24,
+                width - 16, 20,
+                JobsPlus.translatable("gui.job.leave"),
+                (clickedObject, screen, mouseX, mouseY, button) -> {
+                    NetworkManager.sendToServer(new ServerboundLeaveJobPacket(getJob().getJobInstance().getLocation()));
+                    return true;
+                }
+        );
 
         titleText.setBold(true);
         titleText.setTextColor(getJob().getJobInstance().getColorDecimal());
@@ -51,6 +71,7 @@ public class JobInfoComponent extends AbstractComponent<JobInfoComponent> {
         experienceText.setTextColor(ChatFormatting.DARK_GRAY);
         descriptionText.setTextColor(ChatFormatting.DARK_GRAY);
         wantJobText.setTextColor(ChatFormatting.DARK_GRAY);
+        playerCountText.setTextColor(ChatFormatting.GOLD);
         this.title.setScale(2F);
 
         this.addChild(title);
@@ -59,6 +80,8 @@ public class JobInfoComponent extends AbstractComponent<JobInfoComponent> {
         this.addChild(new SolidColorComponent(7, 27, width - 14, 1, 0xFFFFFFFF));
         this.addChild(description);
         this.addChild(wantJob);
+        this.addChild(playerCount);
+        this.addChild(leaveJobButton);
     }
 
     @Override
@@ -70,8 +93,19 @@ public class JobInfoComponent extends AbstractComponent<JobInfoComponent> {
             Objects.requireNonNull(experience.getText()).setText(getExperienceText());
             Objects.requireNonNull(description.getText()).setText(getDescriptionText());
             Objects.requireNonNull(wantJob.getText()).setText(getWantJobText());
+            Objects.requireNonNull(playerCount.getText()).setText(getPlayerCountText());
             cachedJob = getJob();
         }
+
+        // Show leave job button only if:
+        // 1. Player has the job (level > 0)
+        // 2. Leaving is enabled (maxLevelToLeaveJob > 0)
+        // 3. Player's level is within the allowed range
+        int maxLevelToLeave = JobsPlusConfig.maxLevelToLeaveJob.get();
+        boolean canLeaveJob = getJob().getLevel() > 0 &&
+                             maxLevelToLeave > 0 &&
+                             getJob().getLevel() <= maxLevelToLeave;
+        leaveJobButton.setVisible(canLeaveJob);
     }
 
     private Component getTitleText() {
@@ -95,6 +129,28 @@ public class JobInfoComponent extends AbstractComponent<JobInfoComponent> {
     private Component getWantJobText() {
         if (getJob().getLevel() > 0) return JobsPlus.literal("");
         return JobsPlus.translatable("gui.want_this_job.price", JobsPlus.literal(String.valueOf(getJob().getJobInstance().getPrice())).withStyle(ChatFormatting.WHITE), JobsPlus.translatable("gui.price.coins").withStyle(ChatFormatting.WHITE));
+    }
+
+    private Component getPlayerCountText() {
+        if (!JobsPlusConfig.enableJobLimitations.get()) {
+            return JobsPlus.literal("");
+        }
+
+        String jobId = getJob().getJobInstance().getLocation().toString();
+        var jobStats = JobStatsClientCache.getJobStats(jobId);
+
+        if (jobStats == null) {
+            return JobsPlus.literal("");
+        }
+
+        if (jobStats.maxPlayers == Integer.MAX_VALUE) {
+            return JobsPlus.literal("Players: " + jobStats.currentPlayers).withStyle(ChatFormatting.YELLOW);
+        } else {
+            ChatFormatting color = jobStats.isFull() ? ChatFormatting.RED : ChatFormatting.GREEN;
+            String status = jobStats.isFull() ? " [FULL]" : "";
+            return JobsPlus.literal("Players: " + jobStats.currentPlayers + "/" + jobStats.maxPlayers + status)
+                    .withStyle(color);
+        }
     }
 
     private Job getJob() {

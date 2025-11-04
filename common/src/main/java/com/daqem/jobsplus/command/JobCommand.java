@@ -8,6 +8,7 @@ import com.daqem.jobsplus.command.arguments.PowerupArgument;
 
 import com.daqem.jobsplus.player.JobsServerPlayer;
 import com.daqem.jobsplus.player.job.Job;
+import com.daqem.jobsplus.player.job.JobLimitationManager;
 import com.daqem.jobsplus.player.job.powerup.PowerupState;
 import com.daqem.jobsplus.integration.arc.holder.holders.job.JobInstance;
 import com.daqem.jobsplus.integration.arc.holder.holders.powerup.PowerupInstance;
@@ -98,6 +99,9 @@ public class JobCommand {
                                         )
                                 )
                         )
+                )
+                .then(Commands.literal("stats")
+                        .executes(context -> showJobStats(context.getSource()))
                 )
                 .then(Commands.literal("itemtag")
                         .executes(context -> {
@@ -239,6 +243,42 @@ public class JobCommand {
         } else {
             source.sendFailure(JobsPlus.translatable(
                     "command.set.level.invalid_target"));
+        }
+        return 0;
+    }
+
+    @SuppressWarnings("SameReturnValue")
+    private static int showJobStats(CommandSourceStack source) {
+        if (source.getServer() != null) {
+            JobLimitationManager manager = JobLimitationManager.getInstance();
+            var stats = manager.getAllJobStats(source.getServer());
+
+            source.sendSuccess(() -> Component.literal("=== Job Statistics ==="), false);
+            source.sendSuccess(() -> Component.literal("Job Limitations: " +
+                (com.daqem.jobsplus.config.JobsPlusConfig.enableJobLimitations.get() ? "Enabled" : "Disabled")), false);
+
+            if (com.daqem.jobsplus.config.JobsPlusConfig.enableJobLimitations.get()) {
+                source.sendSuccess(() -> Component.literal("Limitation Mode: " +
+                    com.daqem.jobsplus.config.JobsPlusConfig.jobLimitationMode.get()), false);
+                source.sendSuccess(() -> Component.literal(""), false);
+
+                for (var entry : stats.entrySet()) {
+                    String jobId = entry.getKey();
+                    JobLimitationManager.JobStats jobStats = entry.getValue();
+                    String status = jobStats.isFull() ? "§c[FULL]" : "§a[OPEN]";
+                    String limitText = jobStats.getMaxPlayers() == Integer.MAX_VALUE ? "∞" : String.valueOf(jobStats.getMaxPlayers());
+
+                    source.sendSuccess(() -> Component.literal(String.format("%s %s: %d/%s players (%.1f%%)",
+                        status, jobId, jobStats.getCurrentPlayers(), limitText, jobStats.getFillPercentage())), false);
+                }
+            } else {
+                for (var entry : stats.entrySet()) {
+                    String jobId = entry.getKey();
+                    JobLimitationManager.JobStats jobStats = entry.getValue();
+                    source.sendSuccess(() -> Component.literal(String.format("%s: %d players",
+                        jobId, jobStats.getCurrentPlayers())), false);
+                }
+            }
         }
         return 0;
     }

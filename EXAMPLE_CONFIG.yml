@@ -1,0 +1,175 @@
+# Example JobsPlus Configuration with Custom Payment Commands
+# This is a complete example showing all the new features
+
+jobs:
+  enable_default_jobs: true
+  amount_of_free_jobs: 2
+  max_jobs: 2147483647
+  broadcast_level_up_messages: true
+
+  # ===== JOB LIMITATIONS =====
+  # Limit how many players can have specific jobs to create scarcity and interdependence
+  limitations:
+    enable_job_limitations: true
+    job_limitation_mode: "specific"  # Options: "specific", "total_even", "total_ratio"
+    total_player_limit: 100          # Used with "total_even" or "total_ratio" modes
+                                     # Note: Player limits are always rounded UP to avoid fractional players
+
+    # Specific limits per job (used with "specific" mode)
+    specific_job_limits:
+      - "jobsplus:miner:15"      # Max 15 miners
+      - "jobsplus:farmer:12"     # Max 12 farmers
+      - "jobsplus:builder:8"     # Max 8 builders
+      - "jobsplus:lumberjack:10" # Max 10 lumberjacks
+      - "jobsplus:alchemist:5"   # Max 5 alchemists (rare!)
+      - "jobsplus:smith:6"       # Max 6 smiths
+      - "jobsplus:hunter:8"      # Max 8 hunters
+      - "jobsplus:fisherman:10"  # Max 10 fishermen
+      - "jobsplus:digger:12"     # Max 12 diggers
+      - "jobsplus:enchanter:4"   # Max 4 enchanters (very rare!)
+
+    # Job ratios (used with "total_ratio" mode)
+    # These should add up to 1.0 for optimal distribution
+    job_ratios:
+      - "jobsplus:miner:0.25"      # 25% of total_player_limit
+      - "jobsplus:farmer:0.20"     # 20% of total_player_limit
+      - "jobsplus:builder:0.15"    # 15% of total_player_limit
+      - "jobsplus:lumberjack:0.15" # 15% of total_player_limit
+      - "jobsplus:alchemist:0.05"  # 5% of total_player_limit
+      - "jobsplus:smith:0.10"      # 10% of total_player_limit
+      - "jobsplus:hunter:0.10"     # 10% of total_player_limit
+
+  experience:
+    show_xp_in_action_bar: true
+    xp_multiplier: 1.0
+    use_decimal_values_for_xp: false
+
+  coins:
+    # Coins awarded when leveling up a job
+    coins_per_level_up: 100.0
+
+    # Multiplier for internal coin system on actions
+    # DEFAULT: 0 (disabled) - Players only get coins on level-up
+    # Set to 1.0 or higher to enable action-based coin rewards
+    action_coin_multiplier: 0
+
+  commands:
+    # ===== LEVEL-UP COMMAND REWARDS =====
+    enable_command_rewards: true
+    level_up_commands:
+      - "econlib pay {player} 1000 money"
+      - "give {player} minecraft:diamond 1"
+      - "experience add {player} {level} levels"
+      - "title {player} title {\"text\":\"LEVEL {level}!\",\"color\":\"gold\",\"bold\":true}"
+      - "title {player} subtitle {\"text\":\"{job} Job\",\"color\":\"yellow\"}"
+      - "playsound minecraft:ui.toast.challenge_complete master {player}"
+
+    # ===== ACTION PAYMENT COMMANDS =====
+    action_payments:
+      # Enable custom payment commands for job actions
+      use_action_payment_command: true
+
+      # Command to execute when paying players
+      # Available placeholders: {player}, {amount}, {job}
+      # Examples:
+      #   EconLib: "econlib pay {player} {amount} money"
+      #   PlayerPoints: "points give {player} {amount}"
+      #   Vault: "eco give {player} {amount}"
+      action_payment_command: "econlib pay {player} {amount} money"
+
+      # Global base multiplier for all action payments
+      # This is applied AFTER job-specific multipliers
+      # Increase to boost economy, decrease to nerf
+      action_payment_base_amount: 10.0
+
+      # ===== PER-JOB MULTIPLIERS =====
+      # Each job gets a different payment rate
+      # Formula: Final = (Data Amount) × (Job Multiplier) × (Base Amount)
+      job_multipliers:
+        # Skilled/Dangerous jobs - Higher pay
+        miner: 1.5          # Mining is dangerous (lava, caves)
+        hunter: 1.4         # Hunting is dangerous (mobs)
+        smith: 1.3          # Smithing requires skill
+        enchanter: 1.3      # Enchanting requires skill
+        alchemist: 1.2      # Alchemy requires knowledge
+
+        # Normal jobs - Standard pay
+        builder: 1.0        # Building is moderate difficulty
+        lumberjack: 1.0     # Cutting trees is standard work
+
+        # Easy/Safe jobs - Lower pay
+        digger: 0.9         # Digging is simple
+        fisherman: 0.8      # Fishing is peaceful
+        farmer: 0.7         # Farming is peaceful and easy
+
+debug:
+  # Enable to see payment calculations in console
+  is_debug: true
+
+# ===================================================================
+# HOW THIS CONFIG WORKS
+# ===================================================================
+#
+# SIMPLE MODE (Default):
+# Payment amount = XP amount from action files
+#
+# Example: Miner breaks common ore (4-6 XP in action file)
+#
+# 1. Random XP roll: 5 XP
+# 2. Job multiplier (miner): 5 × 1.5 = 7.5
+# 3. Base multiplier: 7.5 × 10 = 75
+# 4. Command executed: "econlib pay Steve 75.00 money"
+#
+# ADVANCED MODE (Payment Override):
+# Add "payment_min" and "payment_max" to action JSON files
+#
+# Example action file:
+# {
+#   "type": "jobsplus:job_exp",
+#   "min": 4,
+#   "max": 6,
+#   "payment_min": 20,
+#   "payment_max": 40
+# }
+#
+# Now XP and payment are independent:
+# 1. Random XP roll: 5 XP (player levels up)
+# 2. Random payment roll: 32 (separate from XP!)
+# 3. Job multiplier: 32 × 1.5 = 48
+# 4. Base multiplier: 48 × 10 = 480
+# 5. Command: "econlib pay Steve 480.00 money"
+#
+# This lets you:
+#   - Make rare actions pay more without speeding up leveling
+#   - Make easy actions pay less without slowing down leveling
+#   - Fine-tune economy independently from progression
+#
+# ===================================================================
+# BALANCING TIPS
+# ===================================================================
+#
+# Global Economy Adjustment:
+#   - Increase action_payment_base_amount to boost all payments
+#   - Decrease action_payment_base_amount to reduce all payments
+#   - Example: Set to 20.0 to double all payments
+#
+# Per-Job Adjustment:
+#   - Increase job multiplier for higher pay
+#   - Decrease job multiplier for lower pay
+#   - Example: Miner too weak? Set to 2.0 instead of 1.5
+#
+# Per-Action Adjustment (requires editing JSON files):
+#   - Add payment_min and payment_max to specific actions
+#   - Example: Make diamond ore worth 100-200 instead of XP amount
+#
+# To disable action payments entirely:
+#   - Set use_action_payment_command: false
+#   - Set action_coin_multiplier: 1.0 (use internal coins instead)
+#
+# To use BOTH internal coins AND economy mod:
+#   - Set use_action_payment_command: true
+#   - Set action_coin_multiplier: 1.0
+#   - Players get both!
+#
+# ===================================================================
+
