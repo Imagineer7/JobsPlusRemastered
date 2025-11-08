@@ -100,4 +100,11 @@ public class JobExperienceComponent extends AbstractComponent<JobExperienceCompo
         scrollContentComponent.scroll(scrollPanelComponent, scrollPanelComponent.getTotalX(), scrollPanelComponent.getTotalY());
         scrollBarComponent.scroll(scrollPanelComponent, scrollPanelComponent.getTotalX(), scrollPanelComponent.getTotalY());
     }
+
+    @Override
+    public boolean preformOnClickEvent(double mouseX, double mouseY, int button) {
+        // Don't process clicks when this component is not visible (e.g., when on a different tab)
+        if (!isVisible()) return false;
+        return super.preformOnClickEvent(mouseX, mouseY, button);
+    }
 }

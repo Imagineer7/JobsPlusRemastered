@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+### Fixed
+- **Jobs GUI Tab Click-Through**: Fixed issue where the leave job button could be accidentally triggered when clicking in other tabs
+  - The button is now properly disabled when viewing tabs other than the Info tab
+  - Prevents accidental job leaving when interacting with Crafting, Power-ups, or Experience tabs
+- **Job Slots Label Updates**: Fixed job player count label not updating immediately when players join or leave jobs
+  - The label now updates in real-time as job statistics change
+  - Improved color visibility on light backgrounds (changed from YELLOW/GREEN/RED to DARK_GRAY/DARK_GREEN/DARK_RED)
+  - Player counts are now easier to read at a glance
+
 ### Added
 - **Job Limitations System**: Server owners can now limit the number of players who can have specific jobs
   - Creates job scarcity to encourage economic interdependence between players

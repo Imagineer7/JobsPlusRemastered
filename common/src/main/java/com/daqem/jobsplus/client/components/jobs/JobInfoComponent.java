@@ -34,6 +34,8 @@ public class JobInfoComponent extends AbstractComponent<JobInfoComponent> {
     private final JobsButtonComponent leaveJobButton;
 
     private Job cachedJob;
+    private int cachedCurrentPlayers = -1;
+    private int cachedMaxPlayers = -1;
 
     public JobInfoComponent(int x, int y, int width, int height, JobsScreenOptions options) {
         super(null, x, y, width, height);
@@ -95,6 +97,24 @@ public class JobInfoComponent extends AbstractComponent<JobInfoComponent> {
             Objects.requireNonNull(wantJob.getText()).setText(getWantJobText());
             Objects.requireNonNull(playerCount.getText()).setText(getPlayerCountText());
             cachedJob = getJob();
+
+            // Reset cached stats when job changes
+            cachedCurrentPlayers = -1;
+            cachedMaxPlayers = -1;
+        }
+
+        // Check if job stats have changed and update player count immediately
+        if (JobsPlusConfig.enableJobLimitations.get()) {
+            String jobId = getJob().getJobInstance().getLocation().toString();
+            var jobStats = JobStatsClientCache.getJobStats(jobId);
+
+            if (jobStats != null) {
+                if (cachedCurrentPlayers != jobStats.currentPlayers || cachedMaxPlayers != jobStats.maxPlayers) {
+                    Objects.requireNonNull(playerCount.getText()).setText(getPlayerCountText());
+                    cachedCurrentPlayers = jobStats.currentPlayers;
+                    cachedMaxPlayers = jobStats.maxPlayers;
+                }
+            }
         }
 
         // Show leave job button only if:
@@ -144,9 +164,9 @@ public class JobInfoComponent extends AbstractComponent<JobInfoComponent> {
         }
 
         if (jobStats.maxPlayers == Integer.MAX_VALUE) {
-            return JobsPlus.literal("Players: " + jobStats.currentPlayers).withStyle(ChatFormatting.YELLOW);
+            return JobsPlus.literal("Players: " + jobStats.currentPlayers).withStyle(ChatFormatting.DARK_GRAY);
         } else {
-            ChatFormatting color = jobStats.isFull() ? ChatFormatting.RED : ChatFormatting.GREEN;
+            ChatFormatting color = jobStats.isFull() ? ChatFormatting.DARK_RED : ChatFormatting.DARK_GREEN;
             String status = jobStats.isFull() ? " [FULL]" : "";
             return JobsPlus.literal("Players: " + jobStats.currentPlayers + "/" + jobStats.maxPlayers + status)
                     .withStyle(color);
@@ -155,5 +175,12 @@ public class JobInfoComponent extends AbstractComponent<JobInfoComponent> {
 
     private Job getJob() {
         return options.getSelectedJob();
+    }
+
+    @Override
+    public boolean preformOnClickEvent(double mouseX, double mouseY, int button) {
+        // Don't process clicks when this component is not visible (e.g., when on a different tab)
+        if (!isVisible()) return false;
+        return super.preformOnClickEvent(mouseX, mouseY, button);
     }
 }
