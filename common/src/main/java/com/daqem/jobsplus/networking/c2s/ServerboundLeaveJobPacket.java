@@ -87,6 +87,10 @@ public class ServerboundLeaveJobPacket implements CustomPacketPayload {
                 context.getPlayer().sendSystemMessage(JobsPlus.translatable("message.job.left_without_reset", jobInstance.getName()));
             }
 
+            // Remove job assignment from persistent storage
+            com.daqem.jobsplus.player.job.JobAssignmentData.get(context.getPlayer().getServer())
+                .removePlayerFromJob(serverPlayer.jobsplus$getServerPlayer().getUUID(), jobInstance.getLocation().toString());
+
             NetworkManager.sendToPlayer((ServerPlayer) serverPlayer, new ClientboundOpenJobsScreenPacket(
                     Stream.concat(serverPlayer.jobsplus$getJobs().stream(), serverPlayer.jobsplus$getInactiveJobs().stream()).toList(),
                     serverPlayer.jobsplus$getCoins()

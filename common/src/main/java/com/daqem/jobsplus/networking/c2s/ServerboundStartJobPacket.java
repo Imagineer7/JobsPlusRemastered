@@ -79,6 +79,11 @@ public class ServerboundStartJobPacket implements CustomPacketPayload {
             }
 
             serverPlayer.jobsplus$addNewJob(jobInstance);
+
+            // Record job assignment in persistent storage
+            com.daqem.jobsplus.player.job.JobAssignmentData.get(context.getPlayer().getServer())
+                .addPlayerToJob(serverPlayer.jobsplus$getServerPlayer().getUUID(), jobInstance.getLocation().toString());
+
             NetworkManager.sendToPlayer((ServerPlayer) serverPlayer, new ClientboundOpenJobsScreenPacket(
                     Stream.concat(serverPlayer.jobsplus$getJobs().stream(), serverPlayer.jobsplus$getInactiveJobs().stream()).toList(),
                     serverPlayer.jobsplus$getCoins()

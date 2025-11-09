@@ -14,6 +14,11 @@
   - The label now updates in real-time as job statistics change
   - Improved color visibility on light backgrounds (changed from YELLOW/GREEN/RED to DARK_GRAY/DARK_GREEN/DARK_RED)
   - Player counts are now easier to read at a glance
+- **Job Limitation Player Counting**: Fixed job slot counts only showing online players instead of all players with jobs
+  - Implemented persistent storage system (`JobAssignmentData`) that tracks all job assignments across server restarts
+  - Job slot counts now accurately reflect total players with each job, regardless of online status
+  - Data is automatically synced when players log in and when they start/leave jobs
+  - Stored in world save data at `world/data/jobsplus_job_assignments.dat`
 
 ### Added
 - **Job Limitations System**: Server owners can now limit the number of players who can have specific jobs

@@ -26,6 +26,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -224,6 +225,25 @@ public abstract class MixinServerPlayer extends Player implements JobsServerPlay
         if (jobsplus$getServerPlayer() instanceof ArcServerPlayer arcServerPlayer) {
             List<IActionHolder> iActionHolders = this.jobsplus$getActionHolders();
             arcServerPlayer.arc$addActionHolders(new ArrayList<>(iActionHolders));
+        }
+
+        // Sync persistent job assignment data with player's actual jobs
+        ServerPlayer serverPlayer = jobsplus$getServerPlayer();
+        if (serverPlayer != null) {
+            MinecraftServer server = serverPlayer.getServer();
+            if (server != null) {
+                com.daqem.jobsplus.player.job.JobAssignmentData assignmentData =
+                    com.daqem.jobsplus.player.job.JobAssignmentData.get(server);
+                java.util.UUID playerId = serverPlayer.getUUID();
+
+                // Add all active jobs to persistent storage
+                for (com.daqem.jobsplus.player.job.Job job : this.jobsplus$jobs) {
+                    if (job.getLevel() > 0 && job.getJobInstance() != null) {
+                        String jobId = job.getJobInstance().getLocation().toString();
+                        assignmentData.addPlayerToJob(playerId, jobId);
+                    }
+                }
+            }
         }
     }
 

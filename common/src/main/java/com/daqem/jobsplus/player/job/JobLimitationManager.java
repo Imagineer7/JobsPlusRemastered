@@ -54,21 +54,15 @@ public class JobLimitationManager {
 
     /**
      * Get the current number of players with a specific job
+     * This now uses persistent storage, so it counts ALL players with the job (online or offline)
      * @param jobInstance The job instance to count
      * @param server The minecraft server instance
      * @return Current number of players with this job
      */
     public int getCurrentJobPlayerCount(JobInstance jobInstance, MinecraftServer server) {
-        int count = 0;
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (player instanceof JobsPlayer jobsPlayer) {
-                Job job = jobsPlayer.jobsplus$getJob(jobInstance);
-                if (job != null && job.getLevel() > 0) {
-                    count++;
-                }
-            }
-        }
-        return count;
+        String jobId = jobInstance.getLocation().toString();
+        JobAssignmentData data = JobAssignmentData.get(server);
+        return data.getPlayerCount(jobId);
     }
 
     /**
