@@ -13,7 +13,10 @@
   ],
   "conditions": [
     {
-      "type": "arc:is_ore"
+      "type": "arc:blocks",
+      "blocks": [
+        "#minecraft:is_ore"
+      ]
     },
     {
       "type": "arc:not",

@@ -29,10 +29,15 @@ public class JobEvents {
 
     public static void onJobLevelUp(JobsPlayer player, Job job) {
         if (player instanceof ArcPlayer arcPlayer) {
-            new ActionDataBuilder(arcPlayer, JobsPlusActionType.JOB_LEVEL_UP)
-                    .withData(JobsPlusActionDataType.ONLY_FOR_JOB, job)
-                    .build()
-                    .sendToAction();
+            try {
+                new ActionDataBuilder(arcPlayer, JobsPlusActionType.JOB_LEVEL_UP)
+                        .withData(JobsPlusActionDataType.ONLY_FOR_JOB, job)
+                        .build()
+                        .sendToAction();
+            } catch (Exception e) {
+                JobsPlus.LOGGER.warn("Failed to send JOB_LEVEL_UP action for player {}: {}",
+                        player.jobsplus$getPlayer().getScoreboardName(), e.getMessage(), e);
+            }
         }
         if (player.jobsplus$getPlayer() instanceof ServerPlayer serverPlayer) {
             NetworkManager.sendToPlayer(serverPlayer, new ClientboundLevelUpJobPacket(job.getJobInstance().getLocation(), job.getLevel()));
@@ -69,11 +74,16 @@ public class JobEvents {
 
     public static void onJobExperience(JobsPlayer player, Job job, int experience) {
         if (player instanceof ArcPlayer arcPlayer) {
-            new ActionDataBuilder(arcPlayer, JobsPlusActionType.JOB_EXP)
-                    .withData(JobsPlusActionDataType.JOB_EXP, experience)
-                    .withData(JobsPlusActionDataType.ONLY_FOR_JOB, job)
-                    .build()
-                    .sendToAction();
+            try {
+                new ActionDataBuilder(arcPlayer, JobsPlusActionType.JOB_EXP)
+                        .withData(JobsPlusActionDataType.JOB_EXP, experience)
+                        .withData(JobsPlusActionDataType.ONLY_FOR_JOB, job)
+                        .build()
+                        .sendToAction();
+            } catch (Exception e) {
+                JobsPlus.LOGGER.warn("Failed to send JOB_EXP action for player {}: {}",
+                        player.jobsplus$getPlayer().getScoreboardName(), e.getMessage(), e);
+            }
         }
     }
 
